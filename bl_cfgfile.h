@@ -16,6 +16,7 @@
  */
 struct bl_conf_file {
     u8 mac_addr[ETH_ALEN];
+    bool mac_addr_ready;
 };
 
 /*

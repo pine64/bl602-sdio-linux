@@ -52,37 +52,40 @@ static const char *bl_find_tag(const u8 *file_data, unsigned int file_size,
 int bl_parse_configfile(struct bl_hw *bl_hw, const char *filename,
                           struct bl_conf_file *config)
 {
-    const struct firmware *config_fw;
-    u8 dflt_mac[ETH_ALEN] = { 0, 111, 111, 111, 111, 0 };
-    int ret;
-    const u8 *tag_ptr;
+	const struct firmware *config_fw;
+	u8 dflt_mac[ETH_ALEN] = { 0, 111, 111, 111, 111, 0 };
+	u8 new_mac[ETH_ALEN];
+	int ret;
+	const u8 *tag_ptr = NULL;
+	bool fw_found;
 
-    BL_DBG(BL_FN_ENTRY_STR);
+	BL_DBG(BL_FN_ENTRY_STR);
 
-    if ((ret = request_firmware(&config_fw, filename, bl_hw->dev))) {
-        printk(KERN_CRIT "%s: Failed to get %s (%d)\n", __func__, filename, ret);
-        return ret;
-    }
+	if (!(ret = request_firmware(&config_fw, filename, bl_hw->dev)))
+		fw_found = true;
 
-    /* Get MAC Address */
-    tag_ptr = bl_find_tag(config_fw->data, config_fw->size,
-                            "MAC_ADDR=", strlen("00:00:00:00:00:00"));
-    if (tag_ptr != NULL) {
-        u8 *addr = config->mac_addr;
-        if (sscanf(tag_ptr,
-                   "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-                   addr + 0, addr + 1, addr + 2,
-                   addr + 3, addr + 4, addr + 5) != ETH_ALEN)
-            memcpy(config->mac_addr, dflt_mac, ETH_ALEN);
-    } else
-        memcpy(config->mac_addr, dflt_mac, ETH_ALEN);
+	/* Get MAC Address */
+	if (fw_found) {
+		tag_ptr = bl_find_tag(config_fw->data, config_fw->size,
+				      "MAC_ADDR=", strlen("00:00:00:00:00:00"));
+	}
+	if (tag_ptr != NULL) {
+		if (sscanf(tag_ptr,
+			   "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+			   new_mac + 0, new_mac + 1, new_mac + 2,
+			   new_mac + 3, new_mac + 4, new_mac + 5) == ETH_ALEN) {
+			memcpy(config->mac_addr, new_mac, ETH_ALEN);
+		}
+	} else if (!config->mac_addr_ready) {
+		memcpy(config->mac_addr, dflt_mac, ETH_ALEN);
+	}
 
-    printk("MAC Address is:\n%pM\n", config->mac_addr);
+	printk("MAC Address is:\n%pM\n", config->mac_addr);
 
-    /* Release the configuration file */
-    release_firmware(config_fw);
+	/* Release the configuration file */
+	release_firmware(config_fw);
 
-    return 0;
+	return 0;
 }
 
 /**

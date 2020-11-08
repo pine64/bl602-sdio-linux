@@ -13,6 +13,7 @@
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/inetdevice.h>
+#include <linux/of.h>
 #include <net/cfg80211.h>
 #include <linux/etherdevice.h>
 
@@ -2229,6 +2230,20 @@ static void bl_reg_notifier(struct wiphy *wiphy,
     bl_send_me_chan_config_req(bl_hw);
 }
 
+void bl_parse_config_of(struct bl_hw *bl_hw, struct bl_conf_file *init_conf)
+{
+	struct device_node *np = bl_hw->dev->of_node;
+	const u8 *addr;
+	int len;
+
+	if (np &&
+	    (addr = of_get_property(np, "local-mac-address", &len)) &&
+	     len == ETH_ALEN) {
+		memcpy(init_conf->mac_addr, addr, ETH_ALEN);
+		init_conf->mac_addr_ready = true;
+	}
+}
+
 int bl_cfg80211_init(struct bl_plat *bl_plat, void **platform_data)
 {
     struct bl_hw *bl_hw;
@@ -2279,7 +2294,8 @@ int bl_cfg80211_init(struct bl_plat *bl_plat, void **platform_data)
     }
 
     bl_hw->mpa_rx_data.buf = kzalloc(BL_RX_DATA_BUF_SIZE_16K, GFP_KERNEL);
-	
+
+	bl_parse_config_of(bl_hw, &init_conf);
     if ((ret = bl_parse_configfile(bl_hw, BL_CONFIG_FW_NAME, &init_conf))) {
         wiphy_err(wiphy, "bl_parse_configfile failed\n");
         goto err_config;
