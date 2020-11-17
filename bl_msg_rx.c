@@ -614,7 +614,7 @@ static msg_cb_fct *msg_hdlrs[] = {
  */
 void bl_rx_handle_msg(struct bl_hw *bl_hw, struct ipc_e2a_msg *msg)
 {
-    printk(KERN_CRIT "recv: msg:%4d-%-24s\n", msg->id, BL_ID2STR(msg->id));
+    BL_DBG("recv: msg:%4d-%-24s\n", msg->id, BL_ID2STR(msg->id));
     bl_hw->cmd_mgr.msgind(&bl_hw->cmd_mgr, msg,
                             msg_hdlrs[MSG_T(msg->id)][MSG_I(msg->id)]);
 }
