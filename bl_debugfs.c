@@ -1060,36 +1060,6 @@ static ssize_t bl_dbgfs_sys_stats_read(struct file *file,
 
 DEBUGFS_READ_FILE_OPS(sys_stats);
 
-static ssize_t bl_dbgfs_um_helper_read(struct file *file,
-                                         char __user *user_buf,
-                                         size_t count, loff_t *ppos)
-{
-    struct bl_hw *priv = file->private_data;
-    char buf[sizeof(priv->debugfs.helper_cmd)];
-    int ret;
-
-    ret = scnprintf(buf, min_t(size_t, sizeof(buf) - 1, count),
-                    "%s", priv->debugfs.helper_cmd);
-
-    return simple_read_from_buffer(user_buf, count, ppos, buf, ret);
-}
-
-static ssize_t bl_dbgfs_um_helper_write(struct file *file,
-                                          const char __user *user_buf,
-                                          size_t count, loff_t *ppos)
-{
-    struct bl_hw *priv = file->private_data;
-    int eobuf = min_t(size_t, sizeof(priv->debugfs.helper_cmd) - 1, count);
-
-    priv->debugfs.helper_cmd[eobuf] = '\0';
-    if (copy_from_user(priv->debugfs.helper_cmd, user_buf, eobuf))
-        return -EFAULT;
-
-    return count;
-}
-
-DEBUGFS_READ_WRITE_FILE_OPS(um_helper);
-
 
 static ssize_t bl_dbgfs_sdio_test_read(struct file *file,
                                          char __user *user_buf,
@@ -1854,51 +1824,6 @@ DEBUGFS_READ_WRITE_FILE_OPS(last_rx);
 
 #endif /* CONFIG_BL_FULLMAC */
 
-/*
- * Calls a userspace pgm
- */
-int bl_um_helper(struct bl_debugfs *bl_debugfs, const char *cmd)
-{
-    char *envp[] = { "PATH=/sbin:/usr/sbin:/bin:/usr/bin", NULL };
-    char **argv;
-    int argc, ret;
-
-    if (!bl_debugfs->dir ||
-        !strlen((cmd = cmd ? cmd : bl_debugfs->helper_cmd)))
-        return 0;
-    argv = argv_split(in_interrupt() ? GFP_ATOMIC : GFP_KERNEL, cmd, &argc);
-    if (!argc)
-        return PTR_ERR(argv);
-
-    if ((ret = call_usermodehelper(argv[0], argv, envp,
-                                   UMH_WAIT_PROC | UMH_KILLABLE)))
-        printk(KERN_CRIT "Failed to call %s (%s returned %d)\n",
-               argv[0], cmd, ret);
-    argv_free(argv);
-
-    return ret;
-}
-
-int bl_trigger_um_helper(struct bl_debugfs *bl_debugfs)
-{
-    if (bl_debugfs->helper_scheduled == true) {
-        printk(KERN_CRIT "%s: Already scheduled\n", __func__);
-        return -EBUSY;
-    }
-
-    spin_lock_bh(&bl_debugfs->umh_lock);
-    if (bl_debugfs->unregistering) {
-        spin_unlock_bh(&bl_debugfs->umh_lock);
-        printk(KERN_CRIT "%s: unregistering\n", __func__);
-        return -ENOENT;
-    }
-    bl_debugfs->helper_scheduled = true;
-    schedule_work(&bl_debugfs->helper_work);
-    spin_unlock_bh(&bl_debugfs->umh_lock);
-
-    return 0;
-}
-
 #ifdef CONFIG_BL_FULLMAC
 static void bl_rc_stat_work(struct work_struct *ws)
 {
@@ -2103,7 +2028,6 @@ void bl_dbgfs_unregister(struct bl_hw *bl_hw)
         return;
 
     bl_debugfs->unregistering = true;
-    flush_work(&bl_debugfs->helper_work);
 #ifdef CONFIG_BL_FULLMAC
     flush_work(&bl_debugfs->rc_stat_work);
 #endif

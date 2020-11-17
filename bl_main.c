@@ -556,8 +556,6 @@ static int bl_close(struct net_device *dev)
 
     BL_DBG(BL_FN_ENTRY_STR);
 
-    netdev_info(dev, "CLOSE");
-
     /* Abort scan request on the vif */
     if (bl_hw->scan_request &&
         bl_hw->scan_request->wdev == &bl_vif->wdev) {

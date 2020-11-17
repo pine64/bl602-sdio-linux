@@ -612,7 +612,7 @@ int bl_send_me_config_req(struct bl_hw *bl_hw)
         return -ENOMEM;
 
     /* Set parameters for the ME_CONFIG_REQ message */
-    printk("HT supp %d\n", ht_cap->ht_supported);
+    BL_DBG("HT supp %d\n", ht_cap->ht_supported);
 
     req->ht_supp = ht_cap->ht_supported;
     req->ht_cap.ht_capa_info = cpu_to_le16(ht_cap->cap);
