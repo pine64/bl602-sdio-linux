@@ -55,13 +55,12 @@ int bl_parse_configfile(struct bl_hw *bl_hw, const char *filename,
 	const struct firmware *config_fw;
 	u8 dflt_mac[ETH_ALEN] = { 0, 111, 111, 111, 111, 0 };
 	u8 new_mac[ETH_ALEN];
-	int ret;
 	const u8 *tag_ptr = NULL;
-	bool fw_found;
+	bool fw_found = false;
 
 	BL_DBG(BL_FN_ENTRY_STR);
 
-	if (!(ret = request_firmware(&config_fw, filename, bl_hw->dev)))
+	if (request_firmware(&config_fw, filename, bl_hw->dev) == 0)
 		fw_found = true;
 
 	/* Get MAC Address */

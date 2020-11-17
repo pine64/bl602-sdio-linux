@@ -14,7 +14,7 @@ CONFIG_BL_BCMC ?= y
 # extra DEBUG config
 CONFIG_BL_SW_PROFILING ?= n
 CONFIG_BL_DBG ?= n
-CONFIG_AUTO_DNLD ?= y
+CONFIG_AUTO_DNLD ?= n
 
 obj-$(CONFIG_BL_FULLMAC) := bl_fdrv.o
 bl_fdrv-y := bl_cfgfile.o           \

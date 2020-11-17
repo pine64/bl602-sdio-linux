@@ -2241,6 +2241,8 @@ void bl_parse_config_of(struct bl_hw *bl_hw, struct bl_conf_file *init_conf)
 	     len == ETH_ALEN) {
 		memcpy(init_conf->mac_addr, addr, ETH_ALEN);
 		init_conf->mac_addr_ready = true;
+	} else {
+		init_conf->mac_addr_ready = false;
 	}
 }
 

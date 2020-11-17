@@ -199,7 +199,7 @@ static int bl_io_write(struct bl_plat *card, u8* data, int len)
 	u32 bitmap = 0;
     int ret;
 
-	//SDIO_DBG(SDIO_FN_ENTRY_STR);
+	SDIO_DBG(SDIO_FN_ENTRY_STR);
 
 #if 0
     data[len - 1] = 0xFF;
@@ -231,7 +231,7 @@ static int bl_io_write(struct bl_plat *card, u8* data, int len)
 #endif
     //printk("%s: ret %d\n", __func__, ret);
 
-	//SDIO_DBG(SDIO_FN_LEAVE_STR);
+	SDIO_DBG(SDIO_FN_LEAVE_STR);
 
 	return 0;
 }
@@ -243,9 +243,7 @@ int bl_io_read(struct bl_plat *card, u8 *buf, int rd_len)
 	u8 rd_bitmap_u = 0;
 	u32 bitmap = 0;
 	
-#if 0
 	SDIO_DBG(SDIO_FN_ENTRY_STR);
-#endif
 
 #if 1
     while (0 == (bitmap & (1 << card->curr_rd_port))) {
@@ -288,9 +286,7 @@ int bl_io_read(struct bl_plat *card, u8 *buf, int rd_len)
         card->curr_rd_port = 0;
     }
 #endif
-#if 0
 	SDIO_DBG(SDIO_FN_LEAVE_STR);
-#endif
 
 	return 0;
 }
@@ -1312,29 +1308,13 @@ int bl_write_data_sync(struct bl_hw *bl_hw, u8 *buffer, u32 pkt_len, u32 port)
 	u8 blk_mode = (pkt_len < BL_SDIO_BLOCK_SIZE) ? BYTE_MODE : BLOCK_MODE;
 	u32 blk_size = (blk_mode == BLOCK_MODE) ? BL_SDIO_BLOCK_SIZE : 1;
 	u32 blk_cnt = (blk_mode == BLOCK_MODE) ? ((pkt_len + BL_SDIO_BLOCK_SIZE -1)/BL_SDIO_BLOCK_SIZE) : pkt_len;
+	u32 final_size;
 
 	u32 ioport = (port & BL_SDIO_IO_PORT_MASK);
 
 	sdio_claim_host(bl_hw->plat->func);
-	ret = sdio_writesb(bl_hw->plat->func, ioport, buffer, blk_cnt * blk_size);
-	sdio_release_host(bl_hw->plat->func);
-
-	return ret;
-}
-
-/*
- * This function reads multiple data from SDIO card memory.
- */
-int bl_read_data_sync(struct bl_hw *bl_hw, u8 *buffer, u32 len, u32 port)
-{
-	int ret;
-	u8 blk_mode = (len < BL_SDIO_BLOCK_SIZE) ? BYTE_MODE : BLOCK_MODE;	
-	u32 blk_size = (blk_mode == BLOCK_MODE) ? BL_SDIO_BLOCK_SIZE : 1;
-	u32 blk_cnt = (blk_mode == BLOCK_MODE) ? ((len + BL_SDIO_BLOCK_SIZE -1)/BL_SDIO_BLOCK_SIZE) : len;
-	u32 ioport = (port & BL_SDIO_IO_PORT_MASK);
-
-	sdio_claim_host(bl_hw->plat->func);
-	ret = sdio_readsb(bl_hw->plat->func, buffer, ioport, blk_cnt * blk_size);
+	final_size = sdio_align_size(bl_hw->plat->func, blk_cnt * blk_size);
+	ret = sdio_writesb(bl_hw->plat->func, ioport, buffer, final_size);
 	sdio_release_host(bl_hw->plat->func);
 
 	return ret;
@@ -1353,6 +1333,30 @@ int bl_read_reg(struct bl_hw *bl_hw, u32 reg, u8 *data)
 	sdio_release_host(bl_hw->plat->func);
 
 	*data = val;
+
+	return ret;
+}
+
+/*
+ * This function reads multiple data from SDIO card memory.
+ */
+int bl_read_data_sync(struct bl_hw *bl_hw, u8 *buffer, u32 len, u32 port)
+{
+	int ret;
+	u8 blk_mode = (len < BL_SDIO_BLOCK_SIZE) ? BYTE_MODE : BLOCK_MODE;	
+	u32 blk_size = (blk_mode == BLOCK_MODE) ? BL_SDIO_BLOCK_SIZE : 1;
+	u32 blk_cnt = (blk_mode == BLOCK_MODE) ? ((len + BL_SDIO_BLOCK_SIZE -1)/BL_SDIO_BLOCK_SIZE) : len;
+	u32 ioport = (port & BL_SDIO_IO_PORT_MASK);
+	u32 final_size;
+	u8 *new_buf;
+
+	sdio_claim_host(bl_hw->plat->func);
+	final_size = sdio_align_size(bl_hw->plat->func, blk_cnt * blk_size);
+	new_buf = kmalloc(final_size, GFP_KERNEL);
+	ret = sdio_readsb(bl_hw->plat->func, new_buf, ioport, final_size);
+	memcpy(buffer, new_buf, len);
+	kfree(new_buf);
+	sdio_release_host(bl_hw->plat->func);
 
 	return ret;
 }
