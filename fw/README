@@ -1,0 +1,3 @@
+whole_flash_data is used for programming via BlFlashEnv, wholeimg_if is used with AUTO_DNLD in SDIO driver.
+
+The .keep suffix is added for adding these file to Git, when using the FW file, the suffix needs to be deleted.
