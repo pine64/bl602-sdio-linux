@@ -316,7 +316,9 @@ static bool bl_rx_data_skb(struct bl_hw *bl_hw, struct bl_vif *bl_vif,
             rx_skb->protocol = eth_type_trans(rx_skb, bl_vif->ndev);
             memset(rx_skb->cb, 0, sizeof(rx_skb->cb));
 
+	    local_bh_disable();
             netif_receive_skb(rx_skb);
+	    local_bh_enable();
 
             /* Update statistics */
             bl_vif->net_stats.rx_packets++;
